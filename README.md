@@ -2,7 +2,7 @@
 
 A lean, powerful TypeScript library for dynamic CSS theming with expression-based style overrides.
 
-## 🚀 [**Live Interactive Demo**](demo.html)
+## 🚀 [**Live Interactive Demo**](https://bournazosharry.github.io/StyleShifter/)
 
 Experience StyleShifter in action! Switch between 6 different themes and see real-time CSS transformations.
 

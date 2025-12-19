@@ -2,9 +2,9 @@
  * CSSProcessor - Parses CSS for theme expressions and generates overrides
  */
 
-import { Theme } from './Theme';
-import { APIFunction, RuleOverride, RuleInfo, FunctionInfo, OverrideProcessor, CSSProcessorOptions } from './types';
-import * as builtInFunctions from './functions';
+import { Theme } from './Theme.js';
+import { APIFunction, RuleOverride, RuleInfo, FunctionInfo, OverrideProcessor, CSSProcessorOptions } from './types.js';
+import * as builtInFunctions from './functions/index.js';
 
 export class CSSProcessor {
   private namespace: string;

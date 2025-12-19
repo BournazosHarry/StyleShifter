@@ -1,4 +1,4 @@
-import type { APIFunction } from '../types';
+import type { APIFunction } from '../types.js';
 
 /**
  * Maps SVG colors to theme colors and returns a base64 data URI.

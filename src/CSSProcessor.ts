@@ -59,9 +59,12 @@ export class CSSProcessor {
       return;
     }
 
-    // Get all stylesheets
+    // Get all stylesheets and track processed style elements
     const styleSheets = document.styleSheets;
+    const processedStyles = new Set<Element>();
     
+    // First pass: process stylesheets from document.styleSheets
+    // This includes both external stylesheets and inline styles that are already loaded
     for (let i = 0; i < styleSheets.length; i++) {
       const sheet = styleSheets[i];
       
@@ -72,8 +75,9 @@ export class CSSProcessor {
           // Silently ignore CORS errors or other issues
         }
       } else if (sheet.ownerNode && 'tagName' in sheet.ownerNode && sheet.ownerNode.tagName === 'STYLE') {
-        // Process inline stylesheets
+        // Process inline stylesheets and mark as processed
         const styleElement = sheet.ownerNode as HTMLStyleElement;
+        processedStyles.add(styleElement);
         const cssText = styleElement.textContent || '';
         if (cssText.trim()) {
           this.parseCSSContentForTheme(cssText, theme);
@@ -81,18 +85,9 @@ export class CSSProcessor {
       }
     }
 
-    // Also check for style elements that might not be in document.styleSheets yet
+    // Second pass: catch any style elements not yet in document.styleSheets
+    // This handles edge cases where styles are dynamically added but not yet loaded
     const styleElements = document.querySelectorAll('style');
-    const processedStyles = new Set<Element>();
-    
-    // Mark styles that were already processed through document.styleSheets
-    for (let i = 0; i < styleSheets.length; i++) {
-      if (styleSheets[i].ownerNode) {
-        processedStyles.add(styleSheets[i].ownerNode as Element);
-      }
-    }
-    
-    // Process any remaining style elements
     for (let i = 0; i < styleElements.length; i++) {
       const styleEl = styleElements[i];
       if (!processedStyles.has(styleEl)) {
@@ -134,7 +129,19 @@ export class CSSProcessor {
   }
 
   /**
-   * Parse CSS content and extract theme overrides
+   * Parse raw CSS text for theme expression comments and extract overrides.
+   *
+   * Theme expressions use the special comment syntax: /\*![expression]*\/.
+   * This method scans the CSS source for those comments, evaluates each
+   * expression against the provided theme (using {@link evaluateExpression}),
+   * and replaces the comment in the CSS text with the resulting theme value.
+   *
+   * As expressions are processed, any rule-level theme overrides that are
+   * discovered are recorded in this instance's overrides map so they
+   * can later be applied when the theme is activated.
+   *
+   * @param src   The CSS source text to scan for theme expressions.
+   * @param theme The theme whose values are used when evaluating expressions.
    */
   private parseCSSContentForTheme(src: string, theme: Theme): void {
     // Parse expressions in format /*![expression]*/
@@ -282,7 +289,7 @@ export class CSSProcessor {
     result.prop = this.removeWhiteSpace(src.substring(propStart, propEnd - 1));
 
     // Check for !important in the value
-    const exprEnd = src.indexOf(']', exprStart) + 1;
+    const exprEnd = src.indexOf(']*/', exprStart) + 3;
     const valueEnd = src.indexOf(';', exprEnd);
     const closingBrace = src.indexOf('}', exprEnd);
     let actualEnd = -1;

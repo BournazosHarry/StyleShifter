@@ -83,11 +83,23 @@ export class CSSProcessor {
 
     // Also check for style elements that might not be in document.styleSheets yet
     const styleElements = document.querySelectorAll('style');
+    const processedStyles = new Set<Element>();
+    
+    // Mark styles that were already processed through document.styleSheets
+    for (let i = 0; i < styleSheets.length; i++) {
+      if (styleSheets[i].ownerNode) {
+        processedStyles.add(styleSheets[i].ownerNode as Element);
+      }
+    }
+    
+    // Process any remaining style elements
     for (let i = 0; i < styleElements.length; i++) {
-      const styleEl = styleElements[i] as HTMLStyleElement;
-      const cssText = styleEl.textContent || '';
-      if (cssText.trim()) {
-        this.parseCSSContentForTheme(cssText, theme);
+      const styleEl = styleElements[i];
+      if (!processedStyles.has(styleEl)) {
+        const cssText = styleEl.textContent || '';
+        if (cssText.trim()) {
+          this.parseCSSContentForTheme(cssText, theme);
+        }
       }
     }
 
@@ -147,15 +159,17 @@ export class CSSProcessor {
             // Find the end of this property value
             let valueEnd = src.indexOf(';', colonPos);
             const closingBrace = src.indexOf('}', colonPos);
-            if (valueEnd === -1 || (closingBrace !== -1 && closingBrace < valueEnd)) {
+            if (valueEnd === -1 && closingBrace !== -1) {
+              valueEnd = closingBrace;
+            } else if (closingBrace !== -1 && closingBrace < valueEnd) {
               valueEnd = closingBrace;
             }
             
             if (valueEnd !== -1) {
               const fullValue = src.substring(colonPos + 1, valueEnd).trim();
               // Replace the expression (including /*![...]*/) with the new value
-              const exprStart = src.lastIndexOf('/*![', idx2);
-              const exprEnd = src.indexOf(']*/', idx2) + 3;
+              const exprStart = idx1;
+              const exprEnd = idx2 + 3;
               const exprWithFallback = src.substring(exprStart, exprEnd);
               const replacementValue = fullValue.replace(exprWithFallback, val);
               
@@ -271,7 +285,12 @@ export class CSSProcessor {
     const exprEnd = src.indexOf(']', exprStart) + 1;
     const valueEnd = src.indexOf(';', exprEnd);
     const closingBrace = src.indexOf('}', exprEnd);
-    const actualEnd = (valueEnd !== -1 && valueEnd < closingBrace) ? valueEnd : closingBrace;
+    let actualEnd = -1;
+    if (valueEnd !== -1 && (closingBrace === -1 || valueEnd < closingBrace)) {
+      actualEnd = valueEnd;
+    } else if (closingBrace !== -1) {
+      actualEnd = closingBrace;
+    }
     if (actualEnd !== -1) {
       const valuePart = src.substring(exprEnd, actualEnd);
       result.important = valuePart.indexOf('!important') !== -1;
